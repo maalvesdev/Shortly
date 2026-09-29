@@ -3,21 +3,30 @@
 import sqlite3
 from flask import current_app, g
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS urls (
+SCHEMA_STATEMENTS = (
+    """CREATE TABLE IF NOT EXISTS urls (
     short_code TEXT PRIMARY KEY,
     original_url TEXT NOT NULL,
     expires_at INTEGER
-);
-CREATE INDEX IF NOT EXISTS idx_urls_expires_at ON urls (expires_at);
-"""
+)""",
+    "CREATE INDEX IF NOT EXISTS idx_urls_expires_at ON urls (expires_at)",
+)
 
 
 def get_db():
-    """Return the request-scoped SQLite connection."""
+    """Return a request-scoped SQLite or PostgreSQL connection."""
     if "db" not in g:
-        connection = sqlite3.connect(current_app.config["DATABASE"])
-        connection.row_factory = sqlite3.Row
+        database = current_app.config["DATABASE"]
+        if is_postgres(database):
+            try:
+                import psycopg
+                from psycopg.rows import dict_row
+            except ImportError as error:
+                raise RuntimeError("PostgreSQL support requires psycopg.") from error
+            connection = psycopg.connect(database, row_factory=dict_row)
+        else:
+            connection = sqlite3.connect(database)
+            connection.row_factory = sqlite3.Row
         g.db = connection
     return g.db
 
@@ -29,5 +38,21 @@ def close_db(_error=None):
 
 
 def init_db():
-    get_db().executescript(SCHEMA)
-    get_db().commit()
+    connection = get_db()
+    if is_postgres(current_app.config["DATABASE"]):
+        for statement in SCHEMA_STATEMENTS:
+            connection.execute(statement)
+    else:
+        connection.executescript(";".join(SCHEMA_STATEMENTS))
+    connection.commit()
+
+
+def execute(statement, parameters=()):
+    """Run a parameterized statement using the driver's placeholder style."""
+    if is_postgres(current_app.config["DATABASE"]):
+        statement = statement.replace("?", "%s")
+    return get_db().execute(statement, parameters)
+
+
+def is_postgres(database):
+    return isinstance(database, str) and database.startswith(("postgres://", "postgresql://"))

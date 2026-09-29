@@ -1,6 +1,7 @@
 """Application entry point for the URL shortener."""
 
 from pathlib import Path
+import os
 
 from flask import Flask, jsonify, redirect, render_template, request
 
@@ -18,7 +19,8 @@ def create_app(test_config=None):
     """Create and configure the Flask application."""
     app = Flask(__name__)
     app.config.from_mapping(
-        DATABASE=Path(__file__).with_name("database.db"),
+        # Render supplies DATABASE_URL in production. SQLite keeps local setup simple.
+        DATABASE=os.environ.get("DATABASE_URL") or Path(__file__).with_name("database.db"),
         MAX_EXPIRY_HOURS=8_760,
     )
     if test_config:

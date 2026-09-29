@@ -39,6 +39,10 @@ static/          CSS and browser JavaScript
 tests/           Automated regression tests
 ```
 
-## Notes for deployment
+## Database and deployment
 
-SQLite is deliberately used for this single-instance portfolio project. For a multi-instance deployment, use a managed database and configure the database path/URL through environment-specific settings. Run a production WSGI server with `gunicorn app:app`; do not use Flask's development server in production.
+Local development uses SQLite automatically, so there is no database setup before running the app. In production, set the `DATABASE_URL` environment variable to a PostgreSQL connection string. The app detects it, connects with `psycopg`, and creates the `urls` table and index on startup.
+
+For Render: create a Postgres instance in the same region as the web service, then set the web service's `DATABASE_URL` to the database's **internal** connection string and redeploy. Never commit this connection string: it contains credentials.
+
+Run the app in production with `gunicorn app:app`; do not use Flask's development server.

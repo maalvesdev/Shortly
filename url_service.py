@@ -7,7 +7,7 @@ import string
 import time
 from urllib.parse import urlparse
 
-from database import get_db
+from database import execute, get_db
 
 ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9_-]{3,32}$")
 SHORT_CODE_ALPHABET = string.ascii_letters + string.digits
@@ -83,7 +83,7 @@ def generate_short_code():
 
 def insert_url(short_code, original_url, expires_at):
     try:
-        get_db().execute(
+        execute(
             "INSERT INTO urls (short_code, original_url, expires_at) VALUES (?, ?, ?)",
             (short_code, original_url, expires_at),
         )
@@ -94,13 +94,13 @@ def insert_url(short_code, original_url, expires_at):
 
 
 def get_destination(short_code):
-    row = get_db().execute(
+    row = execute(
         "SELECT original_url, expires_at FROM urls WHERE short_code = ?", (short_code,)
     ).fetchone()
     if row is None:
         return None
     if row["expires_at"] is not None and time.time() >= row["expires_at"]:
-        get_db().execute("DELETE FROM urls WHERE short_code = ?", (short_code,))
+        execute("DELETE FROM urls WHERE short_code = ?", (short_code,))
         get_db().commit()
         return "expired"
     return row["original_url"]
