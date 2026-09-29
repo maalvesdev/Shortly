@@ -2,10 +2,13 @@
 
 from pathlib import Path
 import os
+import hashlib
 
 from flask import Flask, jsonify, redirect, render_template, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from database import close_db, init_db
+from rate_limit import consume_rate_limit
 from url_service import (
     AliasTakenError,
     InvalidAliasError,
@@ -22,10 +25,15 @@ def create_app(test_config=None):
         # Render supplies DATABASE_URL in production. SQLite keeps local setup simple.
         DATABASE=os.environ.get("DATABASE_URL") or Path(__file__).with_name("database.db"),
         MAX_EXPIRY_HOURS=8_760,
+        RATE_LIMIT_MAX_REQUESTS=int(os.environ.get("RATE_LIMIT_MAX_REQUESTS", "10")),
+        RATE_LIMIT_WINDOW_SECONDS=int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "3600")),
+        RATE_LIMIT_SECRET=os.environ.get("RATE_LIMIT_SECRET", "development-only-change-me"),
     )
     if test_config:
         app.config.update(test_config)
 
+    # Render forwards the original client address and HTTPS scheme in these headers.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
     app.teardown_appcontext(close_db)
     with app.app_context():
         init_db()
@@ -36,6 +44,19 @@ def create_app(test_config=None):
 
     @app.post("/api/shorten")
     def shorten_url():
+        client_key = get_client_key(app.config["RATE_LIMIT_SECRET"])
+        if not consume_rate_limit(
+            client_key,
+            app.config["RATE_LIMIT_MAX_REQUESTS"],
+            app.config["RATE_LIMIT_WINDOW_SECONDS"],
+        ):
+            response, status = api_error(
+                "Too many links created from this address. Please try again later.",
+                429,
+            )
+            response.headers["Retry-After"] = str(app.config["RATE_LIMIT_WINDOW_SECONDS"])
+            return response, status
+
         data = request.get_json(silent=True)
         if not isinstance(data, dict):
             return api_error("Send a JSON object in the request body.")
@@ -66,6 +87,12 @@ def create_app(test_config=None):
 
 def api_error(message, status=400):
     return jsonify(error=message), status
+
+
+def get_client_key(secret):
+    """Hash the client IP so the rate-limit table does not store it directly."""
+    client_ip = request.remote_addr or "unknown"
+    return hashlib.sha256(f"{secret}:{client_ip}".encode()).hexdigest()
 
 
 app = create_app()

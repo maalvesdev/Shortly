@@ -10,6 +10,12 @@ SCHEMA_STATEMENTS = (
     expires_at INTEGER
 )""",
     "CREATE INDEX IF NOT EXISTS idx_urls_expires_at ON urls (expires_at)",
+    """CREATE TABLE IF NOT EXISTS rate_limits (
+        client_key TEXT NOT NULL,
+        window_started_at BIGINT NOT NULL,
+        request_count INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (client_key, window_started_at)
+    )""",
 )
 
 

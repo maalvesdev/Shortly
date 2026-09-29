@@ -44,6 +44,23 @@ class UrlShortenerTests(unittest.TestCase):
         response = self.client.get("/old-link")
         self.assertEqual(response.status_code, 410)
 
+    def test_rate_limit_blocks_the_third_request_when_limit_is_two(self):
+        limited_app = create_app(
+            {
+                "TESTING": True,
+                "DATABASE": self.database_file.name,
+                "RATE_LIMIT_MAX_REQUESTS": 2,
+                "RATE_LIMIT_WINDOW_SECONDS": 300,
+            }
+        )
+        limited_client = limited_app.test_client()
+        payload = {"original_url": "https://example.com"}
+        self.assertEqual(limited_client.post("/api/shorten", json=payload).status_code, 201)
+        self.assertEqual(limited_client.post("/api/shorten", json=payload).status_code, 201)
+        response = limited_client.post("/api/shorten", json=payload)
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers["Retry-After"], "300")
+
 
 if __name__ == "__main__":
     unittest.main()
