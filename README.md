@@ -1,4 +1,4 @@
-# Shortly
+# URL Shortener
 
 A small URL shortener built to demonstrate practical Flask fundamentals: application factories, input validation, SQLite persistence, HTTP status codes, and automated tests.
 
