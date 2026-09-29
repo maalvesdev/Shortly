@@ -1,16 +1,8 @@
-import sqlite3
+"""Create or update the local development database schema."""
 
-connection = sqlite3.connect('database.db')
-cursor = connection.cursor()
+from app import create_app
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS urls (
-        short_code TEXT PRIMARY KEY,
-        original_url TEXT NOT NULL,
-        expires_at INTEGER
-    )
-''')
 
-connection.commit()
-connection.close()
-print("New database created with expiration support!")
+if __name__ == "__main__":
+    create_app()
+    print("Database is ready.")

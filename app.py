@@ -1,103 +1,73 @@
-import sqlite3
-import random
-import string
-import time
-from flask import Flask, request, jsonify, redirect, abort, render_template
+"""Application entry point for the URL shortener."""
 
-app = Flask(__name__)
+from pathlib import Path
 
-def get_db_connection():
-    return sqlite3.connect('database.db')
+from flask import Flask, jsonify, redirect, render_template, request
 
-def generate_short_code(length=6):
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(length))
+from database import close_db, init_db
+from url_service import (
+    AliasTakenError,
+    InvalidAliasError,
+    InvalidUrlError,
+    create_short_url,
+    get_destination,
+)
 
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS urls (
-            short_code TEXT PRIMARY KEY,
-            original_url TEXT NOT NULL,
-            expires_at INTEGER
-        )
-    ''')
-    conn.commit()
-    conn.close()
 
-init_db()
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/api/shorten", methods=["POST"])
-def shorten_url():
-    data = request.get_json()
-    original_url = data.get("original_url")
-    custom_url = data.get("custom_url")
-    expires_in_hours = data.get("expires_in_hours")
-    original_url = data.get("original_url")
-
-    if not original_url.startswith(("http://", "https://")):
-        original_url = "https://" + original_url
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # CUSTOM ALIAS LOGIC
-    if custom_url:
-        cursor.execute("SELECT short_code FROM urls WHERE short_code = ?", (custom_url,))
-        if cursor.fetchone():
-            conn.close()
-            return jsonify({"error": "That custom alias is already taken!"}), 400
-        short_code = custom_url
-    else:
-        short_code = generate_short_code()
-
-    # EXPIRATION LOGIC
-    expires_at = None
-    if expires_in_hours:
-        expires_at = int(time.time() + (int(expires_in_hours) * 3600))
-
-    # SAVE TO DATABASE
-    cursor.execute(
-        "INSERT INTO urls (short_code, original_url, expires_at) VALUES (?, ?, ?)", 
-        (short_code, original_url, expires_at)
+def create_app(test_config=None):
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    app.config.from_mapping(
+        DATABASE=Path(__file__).with_name("database.db"),
+        MAX_EXPIRY_HOURS=8_760,
     )
-    
-    conn.commit()
-    conn.close()
+    if test_config:
+        app.config.update(test_config)
 
-    return jsonify({
-        "short_code": short_code,
-        "short_url": f"{request.host_url}{short_code}"
-    }), 201
+    app.teardown_appcontext(close_db)
+    with app.app_context():
+        init_db()
 
-@app.route("/<short_code>")
-def redirect_to_url(short_code):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT original_url, expires_at FROM urls WHERE short_code = ?", (short_code,))
-    result = cursor.fetchone()
+    @app.get("/")
+    def home():
+        return render_template("index.html")
 
-    if result:
-        original_url = result[0]
-        expires_at = result[1]
+    @app.post("/api/shorten")
+    def shorten_url():
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return api_error("Send a JSON object in the request body.")
+        try:
+            short_code = create_short_url(
+                data.get("original_url"),
+                data.get("custom_url"),
+                data.get("expires_in_hours"),
+                app.config["MAX_EXPIRY_HOURS"],
+            )
+        except (InvalidUrlError, InvalidAliasError) as error:
+            return api_error(str(error))
+        except AliasTakenError:
+            return api_error("That custom alias is already taken.", 409)
+        return jsonify(short_code=short_code, short_url=f"{request.url_root}{short_code}"), 201
 
-        if expires_at and int(time.time()) > expires_at:
-            cursor.execute("DELETE FROM urls WHERE short_code = ?", (short_code,))
-            conn.commit()
-            conn.close()
-            abort(410)
+    @app.get("/<short_code>")
+    def redirect_to_url(short_code):
+        destination = get_destination(short_code)
+        if destination is None:
+            return render_template("not_found.html"), 404
+        if destination == "expired":
+            return render_template("expired.html"), 410
+        return redirect(destination)
 
-        conn.close()
-        return redirect(original_url)
-    else:
-        conn.close()
-        abort(404)
+    return app
+
+
+def api_error(message, status=400):
+    return jsonify(error=message), status
+
+
+app = create_app()
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
