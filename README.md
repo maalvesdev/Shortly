@@ -2,7 +2,7 @@
 
 A full-stack URL shortener built with Python, Flask, JavaScript, SQLite, and PostgreSQL. It lets users create shareable short links, choose a custom alias, and optionally set an expiration time.
 
-**Live demo:** [urlshort-fhgq.onrender.com](https://urlshort-fhgq.onrender.com/)
+![URLshort demo](static/demo.gif)
 
 ## Why I built it
 
