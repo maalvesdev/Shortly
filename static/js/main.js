@@ -7,7 +7,10 @@ const copyButton = document.getElementById("copy-button");
 
 function setTheme(theme) {
     document.body.classList.toggle("light-mode", theme === "light");
-    themeButton.querySelector("span").textContent = theme === "light" ? "Dark" : "Light";
+    themeButton.setAttribute(
+        "aria-label",
+        theme === "light" ? "Switch to dark mode" : "Switch to light mode",
+    );
 }
 
 setTheme(localStorage.getItem("theme") || "dark");
@@ -23,7 +26,7 @@ form.addEventListener("submit", async (event) => {
     result.hidden = true;
     const button = document.getElementById("shortenBtn");
     button.disabled = true;
-    button.textContent = "Shortening…";
+    button.textContent = "Shortening...";
     try {
         const response = await fetch("/api/shorten", {
             method: "POST",
@@ -39,7 +42,7 @@ form.addEventListener("submit", async (event) => {
         errorMessage.textContent = error.message || "Could not reach the server. Please try again.";
     } finally {
         button.disabled = false;
-        button.innerHTML = 'Shorten URL <span aria-hidden="true">→</span>';
+        button.textContent = "Shorten URL";
     }
 });
 
