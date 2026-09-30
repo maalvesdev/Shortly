@@ -1,4 +1,4 @@
-# Shortly
+# Shortly.
 
 A full-stack URL shortener built with Flask, JavaScript, SQLite, and PostgreSQL. It lets users create shareable short links, choose a custom alias, and optionally set an expiration time.
 
