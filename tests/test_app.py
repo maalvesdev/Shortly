@@ -23,6 +23,7 @@ class UrlShortenerTests(unittest.TestCase):
         redirect_response = self.client.get("/portfolio-demo", follow_redirects=False)
         self.assertEqual(redirect_response.status_code, 302)
         self.assertEqual(redirect_response.headers["Location"], "https://example.com/docs")
+        self.assertEqual(redirect_response.headers["Cache-Control"], "no-store")
 
     def test_rejects_invalid_requests_with_a_useful_400(self):
         cases = ({}, {"original_url": "ftp://example.com"}, {"original_url": "example.com", "expires_in_hours": "later"})
@@ -43,6 +44,12 @@ class UrlShortenerTests(unittest.TestCase):
             get_db().commit()
         response = self.client.get("/old-link")
         self.assertEqual(response.status_code, 410)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_missing_link_is_not_cached(self):
+        response = self.client.get("/does-not-exist")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
 
     def test_rate_limit_blocks_the_third_request_when_limit_is_two(self):
         limited_app = create_app(

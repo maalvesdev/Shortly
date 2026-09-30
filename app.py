@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import hashlib
 
-from flask import Flask, jsonify, redirect, render_template, request
+from flask import Flask, jsonify, make_response, redirect, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from database import close_db, init_db
@@ -77,16 +77,23 @@ def create_app(test_config=None):
     def redirect_to_url(short_code):
         destination = get_destination(short_code)
         if destination is None:
-            return render_template("not_found.html"), 404
+            return dynamic_link_response(render_template("not_found.html"), 404)
         if destination == "expired":
-            return render_template("expired.html"), 410
-        return redirect(destination)
+            return dynamic_link_response(render_template("expired.html"), 410)
+        return dynamic_link_response(redirect(destination))
 
     return app
 
 
 def api_error(message, status=400):
     return jsonify(error=message), status
+
+
+def dynamic_link_response(body, status=None):
+    """Prevent browsers from caching redirects or status pages for reused aliases."""
+    response = make_response(body, status) if status is not None else make_response(body)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 def get_client_key(secret):
