@@ -66,6 +66,7 @@ def create_app(test_config=None):
                 data.get("custom_url"),
                 data.get("expires_in_hours"),
                 app.config["MAX_EXPIRY_HOURS"],
+                request.host,
             )
         except (InvalidUrlError, InvalidAliasError) as error:
             return api_error(str(error))

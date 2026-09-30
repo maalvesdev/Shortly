@@ -32,6 +32,18 @@ class UrlShortenerTests(unittest.TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertIn("error", response.json)
 
+    def test_rejects_a_link_to_the_shortener_itself(self):
+        response = self.client.post(
+            "/api/shorten",
+            base_url="https://urlshort-fhgq.onrender.com",
+            json={
+                "original_url": "https://urlshort-fhgq.onrender.com/wikipedia",
+                "custom_url": "loop",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json["error"], "You cannot shorten a Shortly link.")
+
     def test_rejects_an_alias_that_is_already_taken(self):
         payload = {"original_url": "https://example.com", "custom_url": "taken-link"}
         self.client.post("/api/shorten", json=payload)

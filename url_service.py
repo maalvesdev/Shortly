@@ -24,8 +24,11 @@ class AliasTakenError(ValueError):
     pass
 
 
-def create_short_url(original_url, custom_alias, expires_in_hours, max_expiry_hours):
+def create_short_url(
+    original_url, custom_alias, expires_in_hours, max_expiry_hours, shortener_host
+):
     normalized_url = normalize_url(original_url)
+    reject_shortener_url(normalized_url, shortener_host)
     expires_at = calculate_expiry(expires_in_hours, max_expiry_hours)
     alias = normalize_alias(custom_alias)
     if alias:
@@ -49,6 +52,18 @@ def normalize_url(value):
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise InvalidUrlError("Enter a valid http or https URL.")
     return value
+
+
+def reject_shortener_url(url, shortener_host):
+    """Prevent links that redirect back into this shortener's own routes."""
+    destination_host = urlparse(url).hostname
+    current_host = urlparse(f"//{shortener_host}").hostname
+    if (
+        destination_host
+        and current_host
+        and destination_host.lower() == current_host.lower()
+    ):
+        raise InvalidUrlError("You cannot shorten a Shortly link.")
 
 
 def normalize_alias(value):

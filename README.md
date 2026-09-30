@@ -15,6 +15,7 @@ This project is a practical exercise in the backend and deployment fundamentals 
 - Offers link expiration: 1 hour, 24 hours, 7 days, or never
 - Generates random short codes with Python's `secrets` module
 - Handles alias conflicts with a clear `409 Conflict` response
+- Prevents accidental redirect chains by rejecting links back to Shortly itself
 - Displays dedicated pages for missing (`404`) and expired (`410`) links
 - Uses a database-backed rate limit to reduce link-creation spam
 - Uses SQLite for local development and PostgreSQL when `DATABASE_URL` is configured
