@@ -20,6 +20,9 @@ This project is a practical exercise in the backend and deployment fundamentals 
 - Uses a database-backed rate limit to reduce link-creation spam
 - Uses SQLite for local development and PostgreSQL when `DATABASE_URL` is configured
 
+TODO:
+QR Code generator, link data
+
 ## Tech stack
 
 | Area | Technology |
