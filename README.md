@@ -26,7 +26,7 @@ This project is a practical exercise in the backend and deployment fundamentals 
 | Backend | Python, Flask |
 | Database | SQLite (local), PostgreSQL (production) |
 | PostgreSQL driver | psycopg |
-| Front end | HTML, CSS, vanilla JavaScript |
+| Front end | HTML, CSS, JavaScript |
 | Production server | Gunicorn |
 | Tests | Python `unittest` |
 | Hosting | Render |
