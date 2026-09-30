@@ -33,7 +33,12 @@ form.addEventListener("submit", async (event) => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(Object.fromEntries(new FormData(form))),
         });
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch {
+            throw new Error("The server returned an unexpected response. Please try again.");
+        }
         if (!response.ok) throw new Error(data.error || "Something went wrong. Please try again.");
         shortLink.href = data.short_url;
         shortLink.textContent = data.short_url;

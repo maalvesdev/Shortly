@@ -62,3 +62,14 @@ def execute(statement, parameters=()):
 
 def is_postgres(database):
     return isinstance(database, str) and database.startswith(("postgres://", "postgresql://"))
+
+
+def is_integrity_error(error):
+    """Return whether an error represents a unique or integrity constraint violation."""
+    if isinstance(error, sqlite3.IntegrityError):
+        return True
+    try:
+        from psycopg import IntegrityError
+    except ImportError:
+        return False
+    return isinstance(error, IntegrityError)

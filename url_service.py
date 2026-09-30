@@ -2,12 +2,11 @@
 
 import re
 import secrets
-import sqlite3
 import string
 import time
 from urllib.parse import urlparse
 
-from database import execute, get_db
+from database import execute, get_db, is_integrity_error
 
 ALIAS_PATTERN = re.compile(r"^[A-Za-z0-9_-]{3,32}$")
 SHORT_CODE_ALPHABET = string.ascii_letters + string.digits
@@ -88,8 +87,10 @@ def insert_url(short_code, original_url, expires_at):
             (short_code, original_url, expires_at),
         )
         get_db().commit()
-    except sqlite3.IntegrityError:
-        return False
+    except Exception as error:
+        if is_integrity_error(error):
+            return False
+        raise
     return True
 
 
