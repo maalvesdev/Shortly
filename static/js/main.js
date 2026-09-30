@@ -1,24 +1,8 @@
 const form = document.getElementById("shorten-form");
-const themeButton = document.getElementById("theme-toggle");
 const result = document.getElementById("result");
 const errorMessage = document.getElementById("errorMsg");
 const shortLink = document.getElementById("short-link");
 const copyButton = document.getElementById("copy-button");
-
-function setTheme(theme) {
-    document.body.classList.toggle("light-mode", theme === "light");
-    themeButton.setAttribute(
-        "aria-label",
-        theme === "light" ? "Switch to dark mode" : "Switch to light mode",
-    );
-}
-
-setTheme(localStorage.getItem("theme") || "dark");
-themeButton.addEventListener("click", () => {
-    const nextTheme = document.body.classList.contains("light-mode") ? "dark" : "light";
-    localStorage.setItem("theme", nextTheme);
-    setTheme(nextTheme);
-});
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
